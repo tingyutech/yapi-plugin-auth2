@@ -1,11 +1,11 @@
-# yapi-plugin-auth2
+# yapi-plugin-auth3
 
-第三方插件，基于Oauth2协议登录，在生成的配置文件中，添加如下配置即可：
+第三方插件，基于Oauth2协议登录，在生成的配置文件中，添加如下配置：
 
 ```
   "plugins": [
     {
-      "name": "auth2",
+      "name": "auth3",
       "options": {
         "type": "oauth2",
         "clientId": "your client id",
@@ -25,6 +25,13 @@
     }
   ]
 ```
+
+打开 server/controllers/base.js，在 ignoreRouter 处追加：
+
+```js
+'/api/plugin/oauth2/callback'
+```
+
 使用注意:
 
 - Oauth2服务器用户信息需要提供: `email`和`username`两个字段，如果字段名不一致，可以通过`emailKey`和`userKey`设置。
