@@ -2,6 +2,8 @@ const axios = require('axios')
 const find = require('lodash.find')
 const yapi = require('yapi.js');
 const baseController = require('controllers/base.js');
+const crypto = require('crypto');
+const qs = require('querystring')
 
 class oauth2Controller extends baseController {
   constructor(ctx) {
@@ -38,18 +40,25 @@ class oauth2Controller extends baseController {
         method: 'post',
         baseURL: authServer,
         url: tokenPath,
-        params: Object.assign({
+        data: qs.stringify(Object.assign({
           grant_type: 'authorization_code',
           client_id: clientId,
           client_secret: clientSecret,
           code: oauthcode,
           oauthstate: oauthstate,
           redirect_uri: redirectUri
-        }, authArgs)
+        }, authArgs))
       });
 
       if (tokenResult.status === 200) {
-        ctx.redirect('/api/user/login_by_token?token=' + tokenResult.data.access_token);
+        const iv = crypto.randomBytes(12)
+        const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(clientSecret), iv)
+        const buf = [cipher.update(tokenResult.data.access_token, 'utf-8')]
+        buf.push(cipher.final())
+        buf.unshift(cipher.getAuthTag())
+        buf.unshift(iv)
+        // iv(12), authTag(16), cipherText
+        ctx.redirect('/api/user/login_by_token?token=' + encodeURIComponent(Buffer.concat(buf).toString('base64')));
       } else {
         console.error('oauth2Callback.status.error', tokenResult)
         ctx.body = yapi.commons.resReturn(null, tokenResult.status, tokenResult.statusText);

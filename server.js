@@ -1,7 +1,7 @@
 const axios = require('axios');
 const get = require('lodash.get')
 const controller = require('./controller');
-
+const crypto = require('crypto');
 
 function gets(obj, keys) {
   let value = ''
@@ -24,10 +24,19 @@ function gets(obj, keys) {
 }
 
 module.exports = function (options) {
-  const { authServer, infoPath, userKey, emailKey, authArgs } = options;
+  const { authServer, infoPath, userKey, emailKey, authArgs, clientSecret } = options;
 
   this.bindHook('third_login', async (ctx) => {
-    const token = ctx.request.body.token || ctx.request.query.token;
+    const tokenEnc = ctx.request.body.token || ctx.request.query.token;
+    const tokenEncBuf = Buffer.from(tokenEnc, 'base64');
+    const iv = tokenEncBuf.slice(0, 12);
+    const authTag = tokenEncBuf.slice(12, 12 + 16);
+    const cipherText = tokenEncBuf.slice(12 + 16);
+    const cipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(clientSecret, 'utf-8'), iv);
+    cipher.setAuthTag(authTag);
+    const result = [cipher.update(cipherText)];
+    result.push(cipher.final());
+    const token = Buffer.concat(result).toString('utf-8');
 
     try {
       const info = await axios.request({
